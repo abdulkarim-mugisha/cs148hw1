@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="1" tests="42" time="25.126" timestamp="2026-05-29T20:37:30.806519-07:00" hostname="titan"><testcase classname="tests.test_data" name="test_get_batch" time="0.591" /><testcase classname="tests.test_model" name="test_linear" time="0.017" /><testcase classname="tests.test_model" name="test_embedding" time="0.017" /><testcase classname="tests.test_model" name="test_ffn" time="0.006"><failure message="AssertionError: &#10;Not equal to tolerance rtol=0.0001, atol=1e-06&#10;Array 'array' does not match snapshot for test_ffn&#10;Mismatched elements: 8 / 3072 (0.26%)&#10;Max absolute difference among violations: 6.2182546e-05&#10;Max relative difference among violations: 0.00063241&#10; ACTUAL: array([[[-7.697532e+01,  1.796386e-01,  9.953442e+01, ...,&#10;         -5.962029e+01, -2.100187e+02, -5.396739e+01],&#10;        [-1.595642e+02, -9.120358e+01,  3.816952e+00, ...,...&#10; DESIRED: array([[[-7.697530e+01,  1.795764e-01,  9.953443e+01, ...,&#10;         -5.962029e+01, -2.100187e+02, -5.396738e+01],&#10;        [-1.595642e+02, -9.120363e+01,  3.816936e+00, ...,...">numpy_snapshot = &lt;tests.conftest.NumpySnapshot object at 0x75b418b1c590&gt;
+ffn_in_features = tensor([[[-1.9451,  0.0100, -0.5392,  ..., -0.3926, -1.4435,  1.3663],
+         [ 0.0703, -0.9141, -1.8370,  ..., -0.2...38,  1.6058,  ...,  0.7378,  0.5697, -0.3885],
+         [-0.8493, -1.7517, -1.1682,  ...,  0.6358,  0.9085,  1.0069]]])
+ffn_w1_weight = tensor([[-9.4781e-01, -9.3774e-01,  6.9207e-01,  ...,  4.2469e-01,
+         -1.9847e-01, -1.6910e+00],
+        [ 1.177...,  2.4946e+00],
+        [-1.4563e+00,  9.9934e-01, -2.1948e+00,  ..., -1.0542e+00,
+          8.6602e-01, -3.8866e-01]])
+ffn_w2_weight = tensor([[-0.7916, -0.7535,  1.7878,  ..., -3.0037,  1.8461,  0.0519],
+        [ 2.3077, -0.2597,  0.4373,  ..., -0.141...7035,  0.6021,  ..., -0.5654,  0.3101, -1.3532],
+        [-1.9647, -0.4499, -0.9082,  ..., -2.3829, -1.2028,  1.3016]])
+d_model = 64, d_ff = 128
+
+    def test_ffn(numpy_snapshot, ffn_in_features, ffn_w1_weight, ffn_w2_weight, d_model, d_ff):
+        actual_output = run_ffn(
+            d_model=d_model,
+            d_ff=d_ff,
+            w1_weight=ffn_w1_weight,
+            w2_weight=ffn_w2_weight,
+            in_features=ffn_in_features,
+        )
+&gt;       numpy_snapshot.assert_match(actual_output, atol=1e-6)
+
+tests/test_model.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;tests.conftest.NumpySnapshot object at 0x75b418b1c590&gt;
+actual = tensor([[[-7.6975e+01,  1.7964e-01,  9.9534e+01,  ..., -5.9620e+01,
+          -2.1002e+02, -5.3967e+01],
+         [-1....+02,  2.1348e+01,  3.7383e+01,  ..., -3.0652e+01,
+          -6.7169e+01, -2.0400e+01]]], grad_fn=&lt;UnsafeViewBackward0&gt;)
+rtol = 0.0001, atol = 1e-06, test_name = 'test_ffn', force_update = False
+
+    def assert_match(
+        self,
+        actual: _A | dict[str, _A],
+        rtol: float = 1e-4,
+        atol: float = 1e-2,
+        test_name: str | type[DEFAULT] = DEFAULT,
+        force_update: bool | type[DEFAULT] = DEFAULT,
+    ):
+        """
+        Assert that the actual array(s) matches the snapshot.
+    
+        Args:
+            actual: Single NumPy array or dictionary of named arrays
+            test_name: The name of the test (used for the snapshot file)
+            update: If True, update the snapshot instead of comparing
+        """
+        if force_update is DEFAULT:
+            force_update = self.default_force_update
+        if self.always_match_exact:
+            rtol = atol = 0
+        if test_name is DEFAULT:
+            assert self.default_test_name is not None, "Test name must be provided or set as default"
+            test_name = self.default_test_name
+    
+        snapshot_path = self._get_snapshot_path(test_name)
+    
+        # Convert single array to dictionary for consistent handling
+        arrays_dict = actual if isinstance(actual, dict) else {"array": actual}
+        arrays_dict = {k: _canonicalize_array(v) for k, v in arrays_dict.items()}
+    
+        # Load the snapshot
+        expected_arrays = dict(np.load(snapshot_path))
+    
+        # Verify all expected arrays are present
+        missing_keys = set(arrays_dict.keys()) - set(expected_arrays.keys())
+        if missing_keys:
+            raise AssertionError(f"Keys {missing_keys} not found in snapshot for {test_name}")
+    
+        # Verify all actual arrays are expected
+        extra_keys = set(expected_arrays.keys()) - set(arrays_dict.keys())
+        if extra_keys:
+            raise AssertionError(f"Snapshot contains extra keys {extra_keys} for {test_name}")
+    
+        # Compare all arrays
+        for key in arrays_dict:
+&gt;           np.testing.assert_allclose(
+                _canonicalize_array(arrays_dict[key]),
+                expected_arrays[key],
+                rtol=rtol,
+                atol=atol,
+                err_msg=f"Array '{key}' does not match snapshot for {test_name}",
+            )
+E           AssertionError: 
+E           Not equal to tolerance rtol=0.0001, atol=1e-06
+E           Array 'array' does not match snapshot for test_ffn
+E           Mismatched elements: 8 / 3072 (0.26%)
+E           Max absolute difference among violations: 6.2182546e-05
+E           Max relative difference among violations: 0.00063241
+E            ACTUAL: array([[[-7.697532e+01,  1.796386e-01,  9.953442e+01, ...,
+E                    -5.962029e+01, -2.100187e+02, -5.396739e+01],
+E                   [-1.595642e+02, -9.120358e+01,  3.816952e+00, ...,...
+E            DESIRED: array([[[-7.697530e+01,  1.795764e-01,  9.953443e+01, ...,
+E                    -5.962029e+01, -2.100187e+02, -5.396738e+01],
+E                   [-1.595642e+02, -9.120363e+01,  3.816936e+00, ...,...
+
+tests/conftest.py:90: AssertionError</failure></testcase><testcase classname="tests.test_model" name="test_scaled_dot_product_attention" time="0.003" /><testcase classname="tests.test_model" name="test_4d_scaled_dot_product_attention" time="1.139" /><testcase classname="tests.test_model" name="test_multihead_self_attention" time="0.013" /><testcase classname="tests.test_model" name="test_transformer_lm" time="0.047" /><testcase classname="tests.test_model" name="test_transformer_lm_truncated_input" time="0.038" /><testcase classname="tests.test_model" name="test_transformer_block" time="0.011" /><testcase classname="tests.test_model" name="test_layernorm" time="0.002" /><testcase classname="tests.test_model" name="test_sinusoidal_pe" time="0.001" /><testcase classname="tests.test_nn_utils" name="test_softmax_matches_pytorch" time="0.001" /><testcase classname="tests.test_nn_utils" name="test_cross_entropy" time="0.001" /><testcase classname="tests.test_tokenizer" name="test_roundtrip_empty" time="0.176" /><testcase classname="tests.test_tokenizer" name="test_empty_matches_tiktoken" time="0.408" /><testcase classname="tests.test_tokenizer" name="test_roundtrip_single_character" time="0.172" /><testcase classname="tests.test_tokenizer" name="test_single_character_matches_tiktoken" time="0.169" /><testcase classname="tests.test_tokenizer" name="test_roundtrip_single_unicode_character" time="0.179" /><testcase classname="tests.test_tokenizer" name="test_single_unicode_character_matches_tiktoken" time="0.163" /><testcase classname="tests.test_tokenizer" name="test_roundtrip_ascii_string" time="0.174" /><testcase classname="tests.test_tokenizer" name="test_ascii_string_matches_tiktoken" time="0.175" /><testcase classname="tests.test_tokenizer" name="test_roundtrip_unicode_string" time="0.164" /><testcase classname="tests.test_tokenizer" name="test_unicode_string_matches_tiktoken" time="0.176" /><testcase classname="tests.test_tokenizer" name="test_roundtrip_unicode_string_with_special_tokens" time="0.186" /><testcase classname="tests.test_tokenizer" name="test_unicode_string_with_special_tokens_matches_tiktoken" time="0.167" /><testcase classname="tests.test_tokenizer" name="test_overlapping_special_tokens" time="0.173" /><testcase classname="tests.test_tokenizer" name="test_address_roundtrip" time="0.170" /><testcase classname="tests.test_tokenizer" name="test_address_matches_tiktoken" time="0.156" /><testcase classname="tests.test_tokenizer" name="test_german_roundtrip" time="0.155" /><testcase classname="tests.test_tokenizer" name="test_german_matches_tiktoken" time="0.164" /><testcase classname="tests.test_tokenizer" name="test_tinystories_sample_roundtrip" time="0.159" /><testcase classname="tests.test_tokenizer" name="test_tinystories_matches_tiktoken" time="0.163" /><testcase classname="tests.test_tokenizer" name="test_encode_special_token_trailing_newlines" time="0.157" /><testcase classname="tests.test_tokenizer" name="test_encode_special_token_double_newline_non_whitespace" time="0.161" /><testcase classname="tests.test_tokenizer" name="test_encode_iterable_tinystories_sample_roundtrip" time="0.176" /><testcase classname="tests.test_tokenizer" name="test_encode_iterable_tinystories_matches_tiktoken" time="0.171" /><testcase classname="tests.test_tokenizer" name="test_encode_iterable_memory_usage" time="8.240" /><testcase classname="tests.test_tokenizer" name="test_encode_memory_usage" time="6.531"><skipped type="pytest.xfail" message="Tokenizer.encode is expected to take more memory than allotted (1MB)." /></testcase><testcase classname="tests.test_train_bpe" name="test_train_bpe_speed" time="0.350" /><testcase classname="tests.test_train_bpe" name="test_train_bpe" time="0.333" /><testcase classname="tests.test_train_bpe" name="test_train_bpe_special_tokens" time="3.528" /></testsuite></testsuites>
