@@ -161,3 +161,11 @@ cython_debug/
 
 .ruff_cache/
 *.zip
+
+# Project-specific
+data/
+checkpoints/
+cs148hw1/
+writeup/
+docs/
+.uv-cache/
